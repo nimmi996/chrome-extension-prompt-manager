@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Prompt Library Extension - Prototype</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .demo-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .demo-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .demo-header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .demo-header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .chat-interface {
+            padding: 24px;
+            min-height: 400px;
+            background: #fafafa;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        .chat-messages {
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin-bottom: 16px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+
+        .message.assistant {
+            background: #e3f2fd;
+            margin-left: 0;
+        }
+
+        .message.user {
+            background: #667eea;
+            color: white;
+            margin-left: auto;
+        }
+
+        .input-container {
+            position: relative;
+        }
+
+        .demo-input {
+            width: 100%;
+            padding: 16px;
+            border: 2px solid #e5e5e7;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: vertical;
+            min-height: 80px;
+            transition: border-color 0.2s ease;
+        }
+
+        .demo-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .trigger-hint {
+            position: absolute;
+            right: 12px;
+            bottom: 12px;
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .prompt-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            z-index: 1000;
+            backdrop-filter: blur(4px);
+        }
+
+        .prompt-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow: hidden;
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translate(-50%, -60%);
+            }
+            to {
+                opacity: 1;
+                transform: translate(-50%, -50%);
+            }
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #e5e5e7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #86868b;
+            padding: 0;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: background-color 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: #f5f5f7;
+        }
+
+        .search-container {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e5e7;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .filter-tabs {
+            display: flex;
+            padding: 0 20px;
+            background: #fafafa;
+            border-bottom: 1px solid #e5e5e7;
+        }
+
+        .filter-tab {
+            background: none;
+            border: none;
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            color: #86868b;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+
+        .filter-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .prompts-container {
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .prompt-item {
+            background: #fafafa;
+            border: 1px solid #e5e5e7;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .prompt-item:hover {
+            background: #f0f8ff;
+            border-color: #667eea;
+            transform: translateY(-1px);
+        }
+
+        .prompt-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: #1d1d1f;
+            margin-bottom: 8px;
+        }
+
+        .prompt-preview {
+            color: #86868b;
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .prompt-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .prompt-tag {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .favorite-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #86868b;
+            transition: color 0.2s ease;
+        }
+
+        .favorite-btn.active {
+            color: #ff6b6b;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #86868b;
+        }
+
+        .empty-state h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+            color: #1d1d1f;
+        }
+
+        .controls-panel {
+            padding: 24px;
+            background: #f9f9f9;
+            border-top: 1px solid #e5e5e7;
+        }
+
+        .controls-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #1d1d1f;
+        }
+
+        .control-group {
+            margin-bottom: 16px;
+        }
+
+        .control-label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #1d1d1f;
+        }
+
+        .control-input, .control-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e5e7;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+        }
+
+        .control-input:focus, .control-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .control-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e5e7;
+            border-radius: 6px;
+            font-size: 14px;
+            min-height: 80px;
+            resize: vertical;
+            transition: border-color 0.2s ease;
+        }
+
+        .control-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-right: 8px;
+        }
+
+        .btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: #86868b;
+        }
+
+        .btn-secondary:hover {
+            background: #6d6d70;
+        }
+
+        .status-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4caf50;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            transform: translateY(100px);
+            transition: transform 0.3s ease;
+            z-index: 1001;
+        }
+
+        .status-indicator.show {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <div class="demo-header">
+            <h1>AI Prompt Library Extension</h1>
+            <p>Type /=/ in the text field below to access your prompt library</p>
+        </div>
+        
+        <div class="chat-interface">
+            <div class="chat-messages">
+                <div class="message assistant">
+                    Welcome! This is a demo of the AI Prompt Library extension. Try typing "/=/" in the text area below to see how it works.
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <textarea class="demo-input" id="chatInput" placeholder="Type your message to AI... (Try typing /=/ to open prompt library)"></textarea>
+                <div class="trigger-hint">/=/</div>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <h3 class="controls-title">Extension Controls</h3>
+            
+            <div class="control-group">
+                <label class="control-label">Add New Prompt</label>
+                <input type="text" class="control-input" id="newPromptTitle" placeholder="Prompt title...">
+                <textarea class="control-textarea" id="newPromptContent" placeholder="Enter your prompt here..."></textarea>
+                <select class="control-select" id="newPromptCategory">
+                    <option value="writing">Writing</option>
+                    <option value="coding">Coding</option>
+                    <option value="analysis">Analysis</option>
+                    <option value="creative">Creative</option>
+                    <option value="business">Business</option>
+                </select>
+                <button class="btn" onclick="addPrompt()">Add Prompt</button>
+            </div>
+
+            <div class="control-group">
+                <button class="btn btn-secondary" onclick="exportPrompts()">Export Prompts</button>
+                <button class="btn btn-secondary" onclick="importPrompts()">Import Prompts</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="prompt-overlay" id="promptOverlay">
+        <div class="prompt-modal">
+            <div class="modal-header">
+                <div class="modal-title">Prompt Library</div>
+                <button class="close-btn" onclick="closePromptLibrary()">&times;</button>
+            </div>
+            
+            <div class="search-container">
+                <input type="text" class="search-input" id="promptSearch" placeholder="Search prompts..." oninput="filterPrompts()">
+            </div>
+            
+            <div class="filter-tabs">
+                <button class="filter-tab active" onclick="filterByCategory('all')">All</button>
+                <button class="filter-tab" onclick="filterByCategory('favorites')">Favorites</button>
+                <button class="filter-tab" onclick="filterByCategory('recent')">Recent</button>
+                <button class="filter-tab" onclick="filterByCategory('writing')">Writing</button>
+                <button class="filter-tab" onclick="filterByCategory('coding')">Coding</button>
+                <button class="filter-tab" onclick="filterByCategory('business')">Business</button>
+            </div>
+            
+            <div class="prompts-container" id="promptsContainer">
+                <!-- Prompts will be dynamically loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <div class="status-indicator" id="statusIndicator">
+        Prompt inserted successfully!
+    </div>
+
+    <script>
+        // Sample prompts data
+        let prompts = [
+            {
+                id: 1,
+                title: "Blog Post Writer",
+                content: "Act as an expert content writer. Create a comprehensive blog post about [TOPIC]. Include an engaging introduction, 3-5 main points with supporting details, and a compelling conclusion. Target audience: [AUDIENCE]. Tone: [TONE].",
+                category: "writing",
+                tags: ["blog", "content", "writing"],
+                favorite: false,
+                lastUsed: new Date('2024-01-15')
+            },
+            {
+                id: 2,
+                title: "Code Reviewer",
+                content: "Act as a senior software engineer. Review the following code for [LANGUAGE]. Focus on: 1) Code quality and best practices 2) Potential bugs or issues 3) Performance optimizations 4) Security considerations. Provide specific suggestions for improvement.",
+                category: "coding",
+                tags: ["code", "review", "programming"],
+                favorite: true,
+                lastUsed: new Date('2024-01-20')
+            },
+            {
+                id: 3,
+                title: "Marketing Campaign Strategist",
+                content: "Act as a senior marketing strategist. Help me develop a comprehensive campaign for [PRODUCT] targeting [AUDIENCE]. Include key messaging, recommended channels, budget allocation, timeline, and success metrics.",
+                category: "business",
+                tags: ["marketing", "campaign", "strategy"],
+                favorite: false,
+                lastUsed: new Date('2024-01-18')
+            },
+            {
+                id: 4,
+                title: "Data Analysis Expert",
+                content: "Act as a data analyst. Analyze the following dataset/information about [TOPIC]. Provide insights on: 1) Key trends and patterns 2) Notable anomalies 3) Actionable recommendations 4) Statistical significance of findings.",
+                category: "analysis",
+                tags: ["data", "analysis", "insights"],
+                favorite: true,
+                lastUsed: new Date('2024-01-22')
+            },
+            {
+                id: 5,
+                title: "Creative Story Generator",
+                content: "Act as a creative storyteller. Create an engaging story with the following elements: Genre: [GENRE], Main character: [CHARACTER], Setting: [SETTING], Conflict: [CONFLICT]. Make it approximately [LENGTH] words long with vivid descriptions and compelling dialogue.",
+                category: "creative",
+                tags: ["story", "creative", "narrative"],
+                favorite: false,
+                lastUsed: new Date('2024-01-12')
+            },
+            {
+                id: 6,
+                title: "Python Code Generator",
+                content: "Act as a Python programming expert. Create clean, well-documented Python code to [TASK]. Include: 1) Proper error handling 2) Clear comments 3) Type hints where appropriate 4) Example usage 5) Unit test suggestions.",
+                category: "coding",
+                tags: ["python", "programming", "code"],
+                favorite: true,
+                lastUsed: new Date('2024-01-25')
+            },
+            {
+                id: 7,
+                title: "Email Composer",
+                content: "Act as a professional communication expert. Draft a [TYPE] email for [PURPOSE]. Recipient: [RECIPIENT]. Key points to include: [POINTS]. Tone should be [TONE] and include appropriate call-to-action.",
+                category: "writing",
+                tags: ["email", "communication", "professional"],
+                favorite: false,
+                lastUsed: new Date('2024-01-19')
+            },
+            {
+                id: 8,
+                title: "Business Plan Advisor",
+                content: "Act as a business strategy consultant. Help me create a business plan section for [BUSINESS_TYPE] focusing on [SECTION]. Consider market analysis, competitive landscape, financial projections, and risk assessment. Target market: [TARGET_MARKET].",
+                category: "business",
+                tags: ["business", "planning", "strategy"],
+                favorite: false,
+                lastUsed: new Date('2024-01-16')
+            }
+        ];
+
+        let currentFilter = 'all';
+        let searchTerm = '';
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            renderPrompts();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            const chatInput = document.getElementById('chatInput');
+            
+            chatInput.addEventListener('input', function(e) {
+                if (e.target.value.includes('/=/')) {
+                    // Remove the trigger from the input
+                    e.target.value = e.target.value.replace('/=/', '');
+                    openPromptLibrary();
+                }
+            });
+
+            // Close modal when clicking outside
+            document.getElementById('promptOverlay').addEventListener('click', function(e) {
+                if (e.target === this) {
+                    closePromptLibrary();
+                }
+            });
+
+            // Handle escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && document.getElementById('promptOverlay').style.display === 'block') {
+                    closePromptLibrary();
+                }
+            });
+        }
+
+        function openPromptLibrary() {
+            document.getElementById('promptOverlay').style.display = 'block';
+            document.getElementById('promptSearch').focus();
+            renderPrompts();
+        }
+
+        function closePromptLibrary() {
+            document.getElementById('promptOverlay').style.display = 'none';
+            document.getElementById('chatInput').focus();
+        }
+
+        function renderPrompts() {
+            const container = document.getElementById('promptsContainer');
+            const filteredPrompts = getFilteredPrompts();
+
+            if (filteredPrompts.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No prompts found</h3>
+                        <p>Try adjusting your search or filter criteria.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filteredPrompts.map(prompt => `
+                <div class="prompt-item" onclick="selectPrompt(${prompt.id})">
+                    <button class="favorite-btn ${prompt.favorite ? 'active' : ''}" onclick="toggleFavorite(event, ${prompt.id})">
+                        ${prompt.favorite ? '❤️' : '🤍'}
+                    </button>
+                    <div class="prompt-title">${prompt.title}</div>
+                    <div class="prompt-preview">${prompt.content.substring(0, 120)}...</div>
+                    <div class="prompt-tags">
+                        ${prompt.tags.map(tag => `<span class="prompt-tag">${tag}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function getFilteredPrompts() {
+            let filtered = prompts;
+
+            // Apply category filter
+            if (currentFilter === 'favorites') {
+                filtered = filtered.filter(p => p.favorite);
+            } else if (currentFilter === 'recent') {
+                filtered = filtered.sort((a, b) => new Date(b.lastUsed) - new Date(a.lastUsed)).slice(0, 5);
+            } else if (currentFilter !== 'all') {
+                filtered = filtered.filter(p => p.category === currentFilter);
+            }
+
+            // Apply search filter
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                filtered = filtered.filter(p => 
+                    p.title.toLowerCase().includes(term) || 
+                    p.content.toLowerCase().includes(term) ||
+                    p.tags.some(tag => tag.toLowerCase().includes(term))
+                );
+            }
+
+            return filtered;
+        }
+
+        function filterByCategory(category) {
+            currentFilter = category;
+            
+            // Update active tab
+            document.querySelectorAll('.filter-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            renderPrompts();
+        }
+
+        function filterPrompts() {
+            searchTerm = document.getElementById('promptSearch').value;
+            renderPrompts();
+        }
+
+        function selectPrompt(promptId) {
+            const prompt = prompts.find(p => p.id === promptId);
+            if (prompt) {
+                // Update last used
+                prompt.lastUsed = new Date();
+                
+                // Insert prompt into chat input
+                const chatInput = document.getElementById('chatInput');
+                chatInput.value = prompt.content;
+                
+                // Show success indicator
+                showStatus('Prompt inserted successfully!');
+                
+                // Close the modal
+                closePromptLibrary();
+            }
+        }
+
+        function toggleFavorite(event, promptId) {
+            event.stopPropagation();
+            const prompt = prompts.find(p => p.id === promptId);
+            if (prompt) {
+                prompt.favorite = !prompt.favorite;
+                renderPrompts();
+            }
+        }
+
+        function addPrompt() {
+            const title = document.getElementById('newPromptTitle').value.trim();
+            const content = document.getElementById('newPromptContent').value.trim();
+            const category = document.getElementById('newPromptCategory').value;
+
+            if (!title || !content) {
+                alert('Please fill in both title and content fields.');
+                return;
+            }
+
+            const newPrompt = {
+                id: Math.max(...prompts.map(p => p.id)) + 1,
+                title: title,
+                content: content,
+                category: category,
+                tags: [category],
+                favorite: false,
+                lastUsed: new Date()
+            };
+
+            prompts.push(newPrompt);
+            
+            // Clear form
+            document.getElementById('newPromptTitle').value = '';
+            document.getElementById('newPromptContent').value = '';
+            
+            showStatus('Prompt added successfully!');
+        }
+
+        function exportPrompts() {
+            const dataStr = JSON.stringify(prompts, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'ai-prompts-export.json';
+            link.click();
+            
+            showStatus('Prompts exported successfully!');
+        }
+
+        function importPrompts() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const importedPrompts = JSON.parse(e.target.result);
+                            if (Array.isArray(importedPrompts)) {
+                                prompts = [...prompts, ...importedPrompts];
+                                showStatus('Prompts imported successfully!');
+                            } else {
+                                alert('Invalid file format. Please select a valid JSON file.');
+                            }
+                        } catch (error) {
+                            alert('Error reading file. Please select a valid JSON file.');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            
+            input.click();
+        }
+
+        function showStatus(message) {
+            const indicator = document.getElementById('statusIndicator');
+            indicator.textContent = message;
+            indicator.classList.add('show');
+            
+            setTimeout(() => {
+                indicator.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
